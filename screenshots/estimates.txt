@@ -1,0 +1,15 @@
+- Minimum RTO for a single AZ outage -
+
+The RDS MySQL is deployed in highly available configuration where a standby instance is running in a different availability zone. The switchover in case of primary instance failure is automatic and seamless, but still is subject to failure switchover mechanism detecting the failure. Therefore an RTO of 5 minutes is reasonable.
+
+- Minimum RTO for a single region outage -
+
+In addition to multi AZ RDS MySQL, the deployment also benefits from a read replica in a different AWS region. The worst case scenario for this setup is a regional outage where master database is no longer available. In this scenario the read replica has to be promoted to master manually and application servers repointed to the new master database. Once the recovery is complete a new read replica must be created in different region to make the availability guarantees same as before the incident. 1 hour RTO for this kind of procedure should be sufficient.
+
+Minimum RPO for a single AZ outage
+
+Single AZ outage will not affect the multi AZ RDS MySQL, as the failover mechanism will switch to a standby instance. 5 minute RPO is reasonable if we account for the brief period of time it takes the failover mechanism to detect outage and perform switchover.
+
+Minimum RPO for a single region outage
+
+The RPO in regional outage is first and foremost application dependant. If the application synchronously communicates with the database, and as a result stops working when database is down, then RPO will be negligible as there is a read replica in a different region. Since read replica is updated asynchronously 5 minute RPO is reasonable in this scenario. If however application communicates with the database asynchronously then RPO will be dependant on the time it takes the application to fail in response of database failure.  

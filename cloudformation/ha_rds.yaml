@@ -10,6 +10,25 @@ Parameters:
     Type: String
     Default: 10.1.0.0/16
 
+  VPCPeer:
+    Description: Flag indicating if this VPC should peered with other VPC
+    Type: String
+    AllowedValues: 
+      - true
+      - false
+
+  VPCPeerRegion:
+    Description: Peer VPC region
+    Type: String
+    Default: eu-west-2
+    AllowedValues: 
+      - eu-west-1
+      - eu-west-2
+
+  VPCPeerID:
+    Description: Peer VPC ID
+    Type: String
+
   PublicSubnet1CIDR:
     Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
     Type: String
@@ -30,6 +49,68 @@ Parameters:
     Type: String
     Default: 10.1.21.0/24
 
+  RDSAllocatedStorage:
+    Description: Allocated storage (in GB) for RDS MySQL
+    Type: String
+    Default: "20"   
+
+  RDSInstanceType: 
+    Type: String
+    Default: db.t3.micro
+    AllowedValues: 
+      - db.t3.micro
+      - db.t3.small
+      - db.t3.medium
+    Description: RDS MySQL instance type.
+
+  RDSInstanceName:
+    Type: String
+    Default: udacity
+    Description: "RDS MySQL instance name."
+  
+  RDSMySQLEngineVersion:
+    Type: String
+    Default: "8.0.20"
+    Description: RDS MySQL engine version.
+
+  RDSIsReplica:
+    Type: String
+    AllowedValues:
+      - true
+      - false
+    Description: Flag indicating if this RDS MySQL is replica.
+    
+  RDSReplicaSourceID:
+    Type: String
+    Description: RDS MySQL engine version.
+
+  RDSReplicaSourceRegion:
+    Type: String
+    Default: eu-west-2
+    AllowedValues: 
+      - eu-west-1
+      - eu-west-2
+
+  LaunchTestEC2:
+    Description: Flag indicating if test EC2 instance should be launched
+    Type: String
+    AllowedValues: 
+      - true
+      - false
+
+  TestEC2KeyName:
+    Type: String
+    Description: Key name for test EC2 instance
+
+  TestEC2AMIID:
+    Type: String
+    Description: AMI ID for test EC2 instance
+
+Conditions:
+  RDSIsReplicaSelected: !Equals [ !Ref RDSIsReplica, 'true' ]
+  VPCPeerSelected: !Equals [ !Ref VPCPeer, 'true' ]
+  LaunchTestEC2Selected: !Equals [!Ref LaunchTestEC2, 'true' ]
+
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -39,6 +120,9 @@ Metadata:
         Parameters:
           - VpcName
           - VpcCIDR
+          - VPCPeer
+          - VPCPeerRegion
+          - VPCPeerID
       -
         Label:
           default: "Information for the VPCs subnets. Subnet network ranges MUST fall within the VPC CIDR block above"
@@ -47,12 +131,35 @@ Metadata:
           - PublicSubnet2CIDR
           - PrivateSubnet1CIDR
           - PrivateSubnet2CIDR
-
+      -
+        Label:
+          default: "Information for the RDS MySQL."
+        Parameters:
+          - RDSAllocatedStorage
+          - RDSInstanceType
+          - RDSMySQLEngineVersion
+          - RDSInstanceName
+          - RDSIsReplica
+          - RDSReplicaSourceID
+          - RDSReplicaSourceRegion
+      -
+        Label:
+          default: "Information for the test EC2 instance"
+        Parameters:
+          - LaunchTestEC2
+          - TestEC2KeyName
+          - TestEC2AMIID
     ParameterLabels:
       VpcName:
         default: "VPC Name"
       VpcCIDR:
         default: "VPC CIDR block"
+      VPCPeer:
+        default: "Flag if this VPC should be peered"
+      VPCPeerRegion:
+        default: "VPC peer region"
+      VPCPeerID:
+        default: "VPC peer ID"
       PublicSubnet1CIDR:
         default: "Public Subnet 1"
       PublicSubnet2CIDR:
@@ -61,7 +168,26 @@ Metadata:
         default: "Private Subnet 1"
       PrivateSubnet2CIDR:
         default: "Private Subnet 2"
-
+      RDSAllocatedStorage:
+        default: "RDS Allocated Storage"
+      RDSInstanceType:
+        default: "Type of instance for hosting RDS MySQL"
+      RDSMySQLEngineVersion:
+        default: "RDS MySQL engine version"
+      RDSInstanceName:
+        default: "RDS MySQL instance name"
+      RDSIsReplica:
+        default: "Is RDS MySQL replica"
+      RDSReplicaSourceID:
+        default: "RDS MySQL source identifier for replica"
+      RDSReplicaSourceRegion:
+        default: "RDS MySQL source region for replica"
+      LaunchTestEC2:
+        default: "Flag indicating if test EC2 instance should be launched"
+      TestEC2KeyName:
+        default: "Key name for test EC2 instance"
+      TestEC2AMIID:
+        default: "AMI ID for test EC2 instance"
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -72,20 +198,17 @@ Resources:
       Tags:
         - Key: Name
           Value: !Ref VpcName
-
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
         - Key: Name
           Value: !Ref VpcName
-
   InternetGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       InternetGatewayId: !Ref InternetGateway
       VpcId: !Ref VPC
-
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -134,7 +257,6 @@ Resources:
           Value: !Sub
             - ${VpcName} Private Subnet (${AZ2})
             - { AZ2: !Select [ 1, !GetAZs  '' ] }
-
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -142,7 +264,6 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${VpcName} Public Routes
-
   DefaultPublicRoute:
     Type: AWS::EC2::Route
     DependsOn: InternetGatewayAttachment
@@ -150,19 +271,16 @@ Resources:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
-
   PublicSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PublicRouteTable
       SubnetId: !Ref PublicSubnet1
-
   PublicSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PublicRouteTable
       SubnetId: !Ref PublicSubnet2
-
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -170,7 +288,16 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${VpcName} Private Routes
-
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet1
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet2  
   DatabaseSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -186,7 +313,6 @@ Resources:
       Tags:
         - Key: Name
           Value: UDARR-Database
-
   ApplicationSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -202,7 +328,61 @@ Resources:
       Tags:
         - Key: Name
           Value: UDARR-Application
-
+  RDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties: 
+      DBSubnetGroupDescription: Udacity ARR Project - Database Subnet Group
+      DBSubnetGroupName: UDARR-Database-Subnet-Group
+      SubnetIds: 
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags: 
+        - Key: Name
+          Value: UDARR-Database-Subnet-Group
+  RDSMySQL:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: !Ref RDSAllocatedStorage
+      AllowMajorVersionUpgrade: true
+      AutoMinorVersionUpgrade: true
+      BackupRetentionPeriod: 1
+      DBInstanceIdentifier: !Ref RDSInstanceName
+      DBInstanceClass: !Ref RDSInstanceType
+      DBName: !If [ RDSIsReplicaSelected, !Ref 'AWS::NoValue', 'udacity']
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      DeleteAutomatedBackups: true
+      DeletionProtection: false
+      EnableIAMDatabaseAuthentication: false
+      EnablePerformanceInsights: false
+      Engine: mysql
+      EngineVersion: !Ref RDSMySQLEngineVersion
+      MasterUsername: !If [ RDSIsReplicaSelected, !Ref 'AWS::NoValue', "{{resolve:ssm:udacity-rds-username:1}}"]
+      MasterUserPassword: !If [ RDSIsReplicaSelected, !Ref 'AWS::NoValue', "{{resolve:ssm:udacity-rds-password:1}}"]
+      MultiAZ: true
+      PubliclyAccessible: false
+      SourceDBInstanceIdentifier: !If [ RDSIsReplicaSelected, !Ref RDSReplicaSourceID, !Ref 'AWS::NoValue' ]
+      SourceRegion: !If [ RDSIsReplicaSelected, !Ref RDSReplicaSourceRegion, !Ref 'AWS::NoValue' ]
+      StorageEncrypted: false
+      StorageType: gp2
+      VPCSecurityGroups: 
+        - !Ref DatabaseSecurityGroup
+  VPCPeering:
+    Type: AWS::EC2::VPCPeeringConnection
+    Condition: VPCPeerSelected
+    Properties: 
+      PeerRegion: !Ref VPCPeerRegion
+      PeerVpcId: !Ref VPCPeerID
+      VpcId: !Ref VPC
+  EC2TestInstance:
+    Type: AWS::EC2::Instance
+    Condition: LaunchTestEC2Selected
+    Properties: 
+      ImageId: !Ref TestEC2AMIID
+      InstanceType: "t3.micro"
+      KeyName: !Ref TestEC2KeyName
+      SecurityGroupIds: 
+        - !Ref ApplicationSecurityGroup
+      SubnetId: !Ref PublicSubnet1
 Outputs:
   VPC:
     Description: VPC ID
@@ -223,3 +403,7 @@ Outputs:
   ApplicationSecurityGroup:
     Description: ID of the EC2 instance security group
     Value: !Ref ApplicationSecurityGroup
+  
+  RDSMySQL:
+    Description: ID of the RDS MySQL
+    Value: !Ref RDSMySQL

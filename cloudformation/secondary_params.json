@@ -1,0 +1,71 @@
+[
+    {
+      "ParameterKey": "VpcName",
+      "ParameterValue": "secondary"
+    },
+    {
+        "ParameterKey": "VpcCIDR",
+        "ParameterValue": "10.2.0.0/16"
+    },
+    {
+        "ParameterKey": "VPCPeer",
+        "ParameterValue": "true"
+    },
+    {
+        "ParameterKey": "VpcPeerRegion",
+        "ParameterValue": "eu-west-2"
+    },
+    {
+        "ParameterKey": "VpcPeerID",
+        "ParameterValue": "vpc-055d7b802fc4f62f7"
+    },
+    {
+        "ParameterKey": "PublicSubnet1CIDR",
+        "ParameterValue": "10.2.10.0/24"
+    },
+    {
+        "ParameterKey": "PublicSubnet2CIDR",
+        "ParameterValue": "10.2.11.0/24"
+    },
+    {
+        "ParameterKey": "PrivateSubnet1CIDR",
+        "ParameterValue": "10.2.20.0/24"
+    },
+    {
+        "ParameterKey": "PrivateSubnet2CIDR",
+        "ParameterValue": "10.2.21.0/24"
+    },
+    {
+        "ParameterKey": "RDSAllocatedStorage",
+        "ParameterValue": "20"
+    },
+    {
+        "ParameterKey": "RDSInstanceType",
+        "ParameterValue": "db.t3.micro"
+    },
+    {
+        "ParameterKey": "RDSInstanceName",
+        "ParameterValue": "udacity"
+    },
+    {
+        "ParameterKey": "RDSMySQLEngineVersion",
+        "ParameterValue": "8.0.20"
+    },
+    {
+        "ParameterKey": "RDSIsReplica",
+        "ParameterValue": "true"
+    },
+    {
+        "ParameterKey": "RDSReplicaSourceID",
+        "ParameterValue": "arn:aws:rds:eu-west-2:215884729453:db:udacity"
+    },
+    {
+        "ParameterKey": "RDSReplicaSourceRegion",
+        "ParameterValue": "eu-west-2"
+    },
+    ,
+    {
+        "ParameterKey": "LaunchTestEC2",
+        "ParameterValue": "false"        
+    }
+]
